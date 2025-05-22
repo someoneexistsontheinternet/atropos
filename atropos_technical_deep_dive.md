@@ -2,9 +2,9 @@
 
 ## 1. Introduction
 
-This document provides a detailed technical examination of Atropos, an open-source environment microservice framework developed by Nous Research. Atropos is specifically engineered to optimize and expedite asynchronous Reinforcement Learning (RL) processes involving Large Language Models (LLMs). The framework achieves this by furnishing a standardized, scalable, and adaptable infrastructure designed for the creation, deployment, and management of a wide array of interactive learning environments.
+Welcome to the technical deep dive for Atropos, an open-source environment microservice framework by Nous Research. Atropos is engineered to streamline and accelerate asynchronous Reinforcement Learning (RL) specifically with Large Language Models (LLMs). It achieves this by offering a standardized, scalable, and flexible infrastructure for creating, deploying, and managing diverse interactive learning environments.
 
-Intended as a comprehensive resource for developers and researchers, this guide endeavors to elucidate the internal mechanics of the Atropos system. It will explore the system architecture, detail the codebase organization, trace principal data flows, analyze component interactions, and describe operational execution. The objective is to provide readers with the requisite knowledge for proficient utilization, extension, or contribution to the Atropos framework.
+This document serves as a comprehensive guide for developers and researchers aiming to understand the inner workings of Atropos. We will dissect its system architecture, navigate its codebase, trace key data flows, examine how components interact, and detail operational execution. Our goal is to equip you with the knowledge needed to effectively use, extend, or contribute to the Atropos framework.
 
 ## 2. System Architecture Overview
 
@@ -576,5 +576,60 @@ Atropos employs a robust and flexible hierarchical configuration system, primari
     6.  The final merged dictionary is used to instantiate and validate the top-level Pydantic configuration model for the environment. This validated config object is then passed to the environment's `__init__`.
 
 This layered approach provides significant flexibility for managing configurations across different environments and experimental setups.
+
+## 10. System Architecture Diagram (Mermaid)
+
+The following diagram illustrates the high-level architecture of the Atropos framework, showing key components and their primary interactions:
+
+```mermaid
+graph TD
+    subgraph User Interaction
+        UserDev[User/Developer]
+    end
+
+    subgraph "Atropos Environment Host"
+        UserDev -- "CLI: python env.py serve" --> EnvService["Environment Microservice 
+ (your_env.py / BaseEnv)"]
+        EnvService -- "Prompts/Requests 
+ (via ServerManager)" --> LLM_Inf["LLM Inference Server 
+ (External, e.g., vLLM, OpenAI API)"]
+        LLM_Inf -- "LLM Responses" --> EnvService
+        EnvService -- "Trajectory Data (ScoredData) 
+ (POST /scored_data)" --> APIServer["Atropos API Server 
+ (run-api / atroposlib/api/server.py)"]
+    end
+
+    subgraph "Atropos API Server Host"
+        APIServer -- "Stores in" --> TrajectoryQueue["Trajectory Queue 
+ (app.state.queue)"]
+        TrajectoryQueue -- "Serves Batch" --> APIServer
+    end
+
+    subgraph "RL Training Host"
+        Trainer["RL Trainer 
+ (e.g., example_trainer/grpo.py)"] -- "Requests Batch 
+ (GET /batch)" --> APIServer
+        APIServer -- "Returns Batch" --> Trainer
+        Trainer -- "Updates Policy (Conceptual) 
+ (External to Atropos)" --> LLM_Inf
+    end
+
+    %% Component Styling (optional, for clarity)
+    classDef env fill:#D6EAF8,stroke:#3498DB,stroke-width:2px;
+    classDef api fill:#D5F5E3,stroke:#2ECC71,stroke-width:2px;
+    classDef trainer fill:#FCF3CF,stroke:#F1C40F,stroke-width:2px;
+    classDef external fill:#EBDEF0,stroke:#8E44AD,stroke-width:2px;
+    classDef userdev fill:#FDEDEC,stroke:#E74C3C,stroke-width:2px;
+
+    class UserDev userdev;
+    class EnvService env;
+    class APIServer api;
+    class Trainer trainer;
+    class LLM_Inf external;
+    class TrajectoryQueue api;
+
+    %% Interactions Styling
+    linkStyle default interpolate basis
+```
 
 [end of atropos_technical_deep_dive.md]
